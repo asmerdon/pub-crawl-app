@@ -1,0 +1,108 @@
+/* Full-screen container */
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+  }
+  
+  /* Main app container */
+  .app-container {
+    height: 100%;
+    width: 100%;
+    position: relative;
+  }
+  
+  /* Header styling */
+  .header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 10px 20px;
+    z-index: 2;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+  }
+  
+  .header h1 {
+    margin: 0;
+    font-size: 24px;
+  }
+  
+  /* Map container to make the map full screen */
+  .map-container {
+    height: 100%;
+    width: 100%;
+  }
+  
+  /* Form overlay */
+  .form-overlay {
+    position: absolute;
+    top: 80px; /* Place it below the header */
+    left: 20px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+    z-index: 2;
+    width: 300px;
+  }
+  
+  .form-overlay input[type="text"],
+  .form-overlay input[type="number"] {
+    width: calc(100% - 20px);
+    margin-bottom: 10px;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  .form-overlay button {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  
+  .form-overlay button:hover {
+    background-color: #0056b3;
+  }
+  
+  /* Map styling */
+.google-map {
+    width: 100vw; /* Full screen width */
+    height: 100vh; /* Full screen height */
+}
+
+.map-overlay {
+    position: absolute;
+    top: 10px; /* Keep some space from the top */
+    left: 10px;
+    background: white; /* Solid background */
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    z-index: 1000; /* Ensure overlay is above the map */
+}
+
+.header {
+    position: absolute;
+    top: 0;
+    width: 100%;
+    background: #ffffff; /* Solid background for the header */
+    padding: 10px 20px;
+    font-size: 20px;
+    font-weight: bold;
+    z-index: 1100; /* Ensure header is above everything */
+    border-bottom: 1px solid #ddd;
+}
+
+  

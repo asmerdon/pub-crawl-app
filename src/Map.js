@@ -1,74 +1,66 @@
 import React, { useState, useEffect } from 'react';
 import {
-  GoogleMap, // Main component for rendering the map
-  useLoadScript, // Hook to load the Google Maps API script
-  Marker, // Component to display markers on the map
-  InfoWindow, // Component to show additional info about markers
-  DirectionsRenderer, // Component to render routes on the map
+  GoogleMap,
+  useLoadScript,
+  Marker,
+  InfoWindow,
+  DirectionsRenderer,
 } from '@react-google-maps/api';
 
-// Libraries needed for the Places API
 const libraries = ['places'];
 
-// CSS style for the map container
 const containerStyle = {
-  width: '100%', // Full width
-  height: '500px', // 500px height
+  width: '100%',
+  height: '1000px',
 };
 
-// Custom styles to control map appearance
 const mapStyles = [
   {
-    featureType: 'poi', // Points of Interest (e.g., shops, cafes)
-    stylers: [{ visibility: 'off' }], // Hide POIs
+    featureType: 'poi',
+    stylers: [{ visibility: 'off' }],
   },
   {
-    featureType: 'transit', // Transit markers (e.g., bus stops, stations)
-    stylers: [{ visibility: 'on' }], // Show transit markers
+    featureType: 'transit',
+    stylers: [{ visibility: 'on' }],
   },
 ];
 
 const Map = ({ center, maxPubs, generateRoute }) => {
-  // Load the Google Maps API and required libraries
   const { isLoaded } = useLoadScript({
-    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY, // API key from environment variables
-    libraries, // Include the Places library
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
+    libraries,
   });
 
-  // State to store markers, selected marker, and directions
   const [markers, setMarkers] = useState([]);
   const [selectedMarker, setSelectedMarker] = useState(null);
   const [directions, setDirections] = useState(null);
 
-  // Fetch pubs whenever the `center` changes
   useEffect(() => {
-    if (center) {
+    if (generateRoute?.mode === 'double' && generateRoute.data) {
+      fetchPubsAlongRoute(generateRoute.data.start, generateRoute.data.end);
+    } else if (center) {
       fetchPubs(center);
     }
-  }, [center]);
+  }, [center, generateRoute]);
 
-  // Generate the route whenever `generateRoute` is true and markers are set
   useEffect(() => {
     if (generateRoute && markers.length > 1) {
       generateRouteHandler();
     }
   }, [generateRoute, markers]);
 
-  // Calculate distance between two coordinates (Euclidean approximation)
   const calculateDistance = (lat1, lng1, lat2, lng2) => {
     return Math.sqrt((lat2 - lat1) ** 2 + (lng2 - lng1) ** 2);
   };
 
-  // Fetch nearby pubs using the Places API
   const fetchPubs = (location) => {
-    const service = new window.google.maps.places.PlacesService(document.createElement('div')); // Create a temporary DOM node
+    const service = new window.google.maps.places.PlacesService(document.createElement('div'));
     const request = {
-      location, // Center of the search
-      radius: 500, // 500 meters radius
-      keyword: 'pub', // Search for pubs
+      location,
+      radius: 500,
+      keyword: 'pub',
     };
 
-    // Perform a nearby search
     service.nearbySearch(request, (results, status) => {
       if (status === window.google.maps.places.PlacesServiceStatus.OK) {
         const pubsWithDistance = results.map((place) => {
@@ -81,78 +73,99 @@ const Map = ({ center, maxPubs, generateRoute }) => {
           return {
             lat: place.geometry.location.lat(),
             lng: place.geometry.location.lng(),
-            name: place.name, // Pub name
-            rating: place.rating, // Pub rating
-            address: place.vicinity, // Pub address
-            distance, // Distance from center
+            name: place.name,
+            rating: place.rating,
+            address: place.vicinity,
+            distance,
           };
         });
 
-        // Sort pubs by distance and limit the results to `maxPubs`
         const sortedPubs = pubsWithDistance
           .sort((a, b) => a.distance - b.distance)
           .slice(0, maxPubs);
 
-        setMarkers(sortedPubs); // Update markers state
+        setMarkers(sortedPubs);
       } else {
         console.error('Places API Error:', status);
       }
     });
   };
 
-  // Generate a route between the markers
-  const generateRouteHandler = () => {
-    const directionsService = new window.google.maps.DirectionsService(); // Create DirectionsService instance
+  const fetchPubsAlongRoute = (start, end) => {
+    const service = new window.google.maps.places.PlacesService(document.createElement('div'));
+    const bounds = new window.google.maps.LatLngBounds();
+    bounds.extend(start);
+    bounds.extend(end);
 
-    // Convert markers into waypoints for the route
-    const waypoints = markers.slice(1).map((marker) => ({
-      location: { lat: marker.lat, lng: marker.lng },
-      stopover: true, // Indicates this is a stop along the route
-    }));
+    const request = {
+      bounds,
+      keyword: 'pub',
+    };
 
-    // Request directions
-    directionsService.route(
-      {
-        origin: { lat: markers[0].lat, lng: markers[0].lng }, // Starting point
-        destination: { lat: markers[0].lat, lng: markers[0].lng }, // Loop back to the starting point
-        waypoints,
-        travelMode: window.google.maps.TravelMode.WALKING, // Walking route
-        optimizeWaypoints: true, // Optimize the waypoint order
-      },
-      (result, status) => {
-        if (status === window.google.maps.DirectionsStatus.OK) {
-          setDirections(result); // Update directions state with the result
-        } else {
-          console.error('Directions request failed due to ', status);
-        }
+    service.nearbySearch(request, (results, status) => {
+      if (status === window.google.maps.places.PlacesServiceStatus.OK) {
+        const pubs = results.map((place) => ({
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng(),
+          name: place.name,
+          rating: place.rating,
+          address: place.vicinity,
+        }));
+        setMarkers(pubs.slice(0, maxPubs));
+      } else {
+        console.error('Places API Error:', status);
       }
-    );
+    });
   };
 
-  if (!isLoaded) return <div>Loading...</div>; // Show a loading message until the API is ready
+  const generateRouteHandler = () => {
+    const directionsService = new window.google.maps.DirectionsService();
+
+    const waypoints = markers.map((marker) => ({
+      location: { lat: marker.lat, lng: marker.lng },
+      stopover: true,
+    }));
+
+    const routeRequest = {
+      origin: generateRoute.mode === 'double' ? generateRoute.data.start : markers[0],
+      destination: generateRoute.mode === 'double' ? generateRoute.data.end : markers[0],
+      waypoints,
+      travelMode: window.google.maps.TravelMode.WALKING,
+      optimizeWaypoints: true,
+    };
+
+    directionsService.route(routeRequest, (result, status) => {
+      if (status === window.google.maps.DirectionsStatus.OK) {
+        setDirections(result);
+      } else {
+        console.error('Directions request failed:', status);
+      }
+    });
+  };
+
+  if (!isLoaded) return <div>Loading...</div>;
 
   return (
     <GoogleMap
-      mapContainerStyle={containerStyle} // Map container styling
-      center={center} // Center of the map
-      zoom={15} // Zoom level
-      options={{ styles: mapStyles }} // Apply custom styles
+      className="google-map"
+      mapContainerStyle={containerStyle}
+      center={center}
+      zoom={15}
+      options={{ styles: mapStyles }}
     >
-      {/* Render a marker for each pub */}
       {markers.map((marker, index) => (
         <Marker
           key={index}
-          position={{ lat: marker.lat, lng: marker.lng }} // Pub's coordinates
-          label={String.fromCharCode(65 + index)} // Label markers as A, B, C, etc.
-          onClick={() => setSelectedMarker(marker)} // Open info window on click
+          position={{ lat: marker.lat, lng: marker.lng }}
+          label={String.fromCharCode(65 + index)}
+          onClick={() => setSelectedMarker(marker)}
         />
       ))}
 
-      {/* Show info about the selected marker */}
       {selectedMarker && (
         <InfoWindow
           position={{ lat: selectedMarker.lat, lng: selectedMarker.lng }}
-          onCloseClick={() => setSelectedMarker(null)} // Close the info window
+          onCloseClick={() => setSelectedMarker(null)}
         >
           <div>
             <h2>{selectedMarker.name}</h2>
@@ -162,13 +175,10 @@ const Map = ({ center, maxPubs, generateRoute }) => {
         </InfoWindow>
       )}
 
-      {/* Render the route if directions are available */}
       {directions && (
         <DirectionsRenderer
           directions={directions}
-          options={{
-            suppressMarkers: true, // Hide route-generated markers
-          }}
+          options={{ suppressMarkers: true }}
         />
       )}
     </GoogleMap>
