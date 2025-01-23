@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLoadScript } from '@react-google-maps/api';
-import Map from './Map';
+import PubCrawlMap from './Map';
 import './style.css';
 
 const libraries = ['places'];
@@ -15,6 +15,7 @@ const App = () => {
   const [coordinates, setCoordinates] = useState(null);
   const [maxPubs, setMaxPubs] = useState(5);
   const [generateRoute, setGenerateRoute] = useState(false);
+  const [showPubs, setShowPubs] = useState(false);
   const [mode, setMode] = useState('single');
   const [startLocation, setStartLocation] = useState('');
   const [endLocation, setEndLocation] = useState('');
@@ -35,6 +36,7 @@ const App = () => {
           const { lat, lng } = results[0].geometry.location;
           setCoordinates({ lat: lat(), lng: lng() });
           setGenerateRoute({ mode: 'single', data: null });
+          setShowPubs(true);
         } else {
           console.error('Geocode was not successful:', status);
         }
@@ -59,7 +61,15 @@ const App = () => {
       )
         .then(([startCoords, endCoords]) => {
           setCoordinates({ start: startCoords, end: endCoords });
-          setGenerateRoute({ mode: 'double', data: { start: startCoords, end: endCoords } });
+          setGenerateRoute({
+            mode: 'double',
+            data: {
+              start: startCoords,
+              end: endCoords,
+              evenlyDistribute: true,
+            },
+          });
+          setShowPubs(true);
         })
         .catch((error) => console.error(error));
     }
@@ -133,11 +143,13 @@ const App = () => {
           <button onClick={handleGenerateCrawl}>Generate Crawl</button>
         </div>
 
-        <Map
+        <PubCrawlMap
           center={coordinates?.start || coordinates || defaultCenter}
           maxPubs={maxPubs}
           generateRoute={generateRoute}
+          showPubs={showPubs}
         />
+
       </div>
     </div>
   );
