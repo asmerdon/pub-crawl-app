@@ -36,9 +36,11 @@ body {
   min-height: 0;
 }
 
-/* Header */
+/* Header – above map and overlay */
 .header {
   flex-shrink: 0;
+  position: relative;
+  z-index: 1002;
   display: flex;
   align-items: center;
   padding: 0 24px;
@@ -63,13 +65,16 @@ body {
   min-height: 0;
   position: relative;
   background: #e2e8f0;
+  isolation: isolate; /* stacking context so overlay stays above map */
 }
 
+/* Map sits behind UI overlay – explicit low z-index so overlay (1000) is always on top */
 .map-wrapper {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  z-index: 0;
 }
 
 .map-wrapper .google-map {
@@ -77,12 +82,12 @@ body {
   height: 100% !important;
 }
 
-/* Form overlay – modern card */
+/* Form overlay – always on top of map */
 .form-overlay {
   position: absolute;
   top: 20px;
   left: 20px;
-  z-index: 10;
+  z-index: 1000;
   width: 320px;
   padding: 24px;
   background: var(--color-bg-card);
@@ -234,8 +239,94 @@ body {
   color: var(--color-text);
 }
 
-.info-window p {
-  margin: 4px 0;
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
-}
+  .info-window p {
+    margin: 4px 0;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+  }
+
+  /* Error message */
+  .form-overlay__error {
+    margin-bottom: 16px;
+    padding: 12px;
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+    border-radius: var(--radius-md);
+    color: #991b1b;
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+
+  /* Loading state */
+  .form-overlay__button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .form-overlay input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* Leaflet custom markers */
+  .custom-marker {
+    background: transparent;
+    border: none;
+  }
+
+  .marker-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--color-accent);
+    color: #fff;
+    border-radius: 50%;
+    font-weight: 600;
+    font-size: 0.875rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    border: 2px solid #fff;
+  }
+
+  /* Map loading overlay */
+  .map-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.8);
+    z-index: 1000;
+    pointer-events: none;
+  }
+
+  .map-loading__spinner {
+    padding: 16px 24px;
+    background: var(--color-bg-card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  /* Cleaner map UI – subtle controls */
+  .map-wrapper .leaflet-control-attribution {
+    font-size: 10px;
+    margin: 0;
+    padding: 2px 6px;
+    background: rgba(255, 255, 255, 0.85) !important;
+  }
+
+  .map-wrapper .leaflet-control-zoom {
+    border: none !important;
+  }
+
+  .map-wrapper .leaflet-control-zoom a {
+    background: rgba(255, 255, 255, 0.9) !important;
+    color: #333;
+    font-weight: 600;
+  }

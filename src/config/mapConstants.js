@@ -1,20 +1,12 @@
 /**
- * Google Maps and pub crawl configuration.
- * API key is read from process.env.REACT_APP_GOOGLE_MAPS_API_KEY (see .env.example).
+ * Leaflet (OpenStreetMap) and pub crawl configuration.
+ * No API keys required - uses free open-source services.
  */
 
 export const MAP = {
-  defaultCenter: { lat: 51.5074, lng: -0.1278 },
+  defaultCenter: { lat: 51.5074, lng: -0.1278 }, // London
   defaultZoom: 15,
-  containerStyle: {
-    width: '100%',
-    height: '100%',
-    minHeight: '500px',
-  },
-  styles: [
-    { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-    { featureType: 'transit', stylers: [{ visibility: 'on' }] },
-  ],
+  searchRadius: 500, // meters
 };
 
 export const PLACES = {

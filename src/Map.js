@@ -1,99 +1,71 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  GoogleMap,
-  Marker,
-  InfoWindow,
-  DirectionsRenderer,
-} from '@react-google-maps/api';
-import { MAP, PLACES } from './config/mapConstants';
+import React, { useState, useEffect, useCallback } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import { searchPubsNearby, searchPubsAlongRoute } from './services/pubSearch';
+import { getRoute } from './services/routing';
+import { MAP } from './config/mapConstants';
+import 'leaflet/dist/leaflet.css';
+
+// Fix Leaflet default icon issue with webpack
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+});
 
 /**
- * Pub crawl map: shows pubs and walking route. Google Maps script must already be loaded (by App).
+ * Component to update map view when center changes.
+ */
+function MapViewUpdater({ center, zoom }) {
+  const map = useMap();
+  useEffect(() => {
+    if (center) {
+      map.setView([center.lat, center.lng], zoom);
+    }
+  }, [center, zoom, map]);
+  return null;
+}
+
+/**
+ * Pub crawl map using Leaflet (OpenStreetMap).
  */
 const PubCrawlMap = ({ center, maxPubs, generateRoute, showPubs }) => {
   const [markers, setMarkers] = useState([]);
   const [selectedMarker, setSelectedMarker] = useState(null);
-  const [directions, setDirections] = useState(null);
-  const placesServiceRef = useRef(null);
-
-  const getPlacesService = useCallback(() => {
-    if (!placesServiceRef.current && typeof window !== 'undefined' && window.google?.maps?.places) {
-      const div = document.createElement('div');
-      placesServiceRef.current = new window.google.maps.places.PlacesService(div);
-    }
-    return placesServiceRef.current;
-  }, []);
-
-  const calculateDistance = useCallback((lat1, lng1, lat2, lng2) => {
-    return Math.sqrt((lat2 - lat1) ** 2 + (lng2 - lng1) ** 2);
-  }, []);
+  const [routeGeometry, setRouteGeometry] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const fetchPubs = useCallback(
-    (location) => {
-      const service = getPlacesService();
-      if (!service) return;
-
-      service.nearbySearch(
-        {
-          location,
-          radius: PLACES.radiusMeters,
-          keyword: PLACES.keyword,
-        },
-        (results, status) => {
-          if (status === window.google.maps.places.PlacesServiceStatus.OK) {
-            const pubsWithDistance = results.map((place) => {
-              const lat = place.geometry.location.lat();
-              const lng = place.geometry.location.lng();
-              return {
-                lat,
-                lng,
-                name: place.name,
-                rating: place.rating,
-                address: place.vicinity,
-                distance: calculateDistance(location.lat, location.lng, lat, lng),
-              };
-            });
-            const sorted = pubsWithDistance
-              .sort((a, b) => a.distance - b.distance)
-              .slice(0, maxPubs);
-            setMarkers(sorted);
-          } else {
-            console.error('Places API Error:', status);
-          }
-        }
-      );
+    async (location) => {
+      setIsLoading(true);
+      try {
+        const pubs = await searchPubsNearby(location, MAP.searchRadius, maxPubs);
+        setMarkers(pubs);
+      } catch (error) {
+        console.error('Failed to fetch pubs:', error);
+        setMarkers([]);
+      } finally {
+        setIsLoading(false);
+      }
     },
-    [getPlacesService, calculateDistance, maxPubs]
+    [maxPubs]
   );
 
   const fetchPubsAlongRoute = useCallback(
-    (start, end) => {
-      const service = getPlacesService();
-      if (!service) return;
-
-      const bounds = new window.google.maps.LatLngBounds();
-      bounds.extend(start);
-      bounds.extend(end);
-
-      service.nearbySearch(
-        { bounds, keyword: PLACES.keyword },
-        (results, status) => {
-          if (status === window.google.maps.places.PlacesServiceStatus.OK) {
-            const pubs = results.map((place) => ({
-              lat: place.geometry.location.lat(),
-              lng: place.geometry.location.lng(),
-              name: place.name,
-              rating: place.rating,
-              address: place.vicinity,
-            }));
-            setMarkers(pubs.slice(0, maxPubs));
-          } else {
-            console.error('Places API Error:', status);
-          }
-        }
-      );
+    async (start, end) => {
+      setIsLoading(true);
+      try {
+        const pubs = await searchPubsAlongRoute(start, end, maxPubs);
+        setMarkers(pubs);
+      } catch (error) {
+        console.error('Failed to fetch pubs along route:', error);
+        setMarkers([]);
+      } finally {
+        setIsLoading(false);
+      }
     },
-    [getPlacesService, maxPubs]
+    [maxPubs]
   );
 
   useEffect(() => {
@@ -106,71 +78,108 @@ const PubCrawlMap = ({ center, maxPubs, generateRoute, showPubs }) => {
   }, [showPubs, center, generateRoute, fetchPubs, fetchPubsAlongRoute]);
 
   useEffect(() => {
-    if (!generateRoute || markers.length < 2) return;
+    if (!generateRoute) {
+      setRouteGeometry(null);
+      return;
+    }
+    if (generateRoute.mode === 'single' && markers.length < 2) {
+      setRouteGeometry(null);
+      return;
+    }
+    if (generateRoute.mode === 'double' && !generateRoute.data) {
+      setRouteGeometry(null);
+      return;
+    }
 
-    const directionsService = new window.google.maps.DirectionsService();
-    const origin =
-      generateRoute.mode === 'double' ? generateRoute.data.start : markers[0];
-    const destination =
-      generateRoute.mode === 'double' ? generateRoute.data.end : markers[markers.length - 1];
-    const waypoints = markers.slice(1, -1).map((m) => ({
-      location: { lat: m.lat, lng: m.lng },
-      stopover: true,
-    }));
-
-    directionsService.route(
-      {
-        origin: { lat: origin.lat, lng: origin.lng },
-        destination: { lat: destination.lat, lng: destination.lng },
-        waypoints,
-        travelMode: window.google.maps.TravelMode.WALKING,
-        optimizeWaypoints: true,
-      },
-      (result, status) => {
-        if (status === window.google.maps.DirectionsStatus.OK) {
-          setDirections(result);
+    const generateRouteLine = async () => {
+      try {
+        let waypoints;
+        let optimize;
+        if (generateRoute.mode === 'double') {
+          waypoints = [
+            generateRoute.data.start,
+            ...markers,
+            generateRoute.data.end,
+          ];
+          optimize = false; // keep order: start → pubs → end
         } else {
-          console.error('Directions request failed:', status);
+          waypoints = markers;
+          optimize = true;
         }
+
+        const route = await getRoute(waypoints, optimize);
+        setRouteGeometry(route.geometry);
+      } catch (error) {
+        console.error('Failed to generate route:', error);
+        setRouteGeometry(null);
       }
-    );
+    };
+
+    generateRouteLine();
   }, [generateRoute, markers]);
+
+  // Create custom markers with labels (A, B, C...)
+  const createCustomIcon = (label) => {
+    return L.divIcon({
+      className: 'custom-marker',
+      html: `<div class="marker-label">${label}</div>`,
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
+    });
+  };
 
   return (
     <div className="map-wrapper">
-      <GoogleMap
-        className="google-map"
-        mapContainerStyle={MAP.containerStyle}
-      center={center}
-      zoom={MAP.defaultZoom}
-      options={{ styles: MAP.styles }}
-    >
-      {markers.map((marker, index) => (
-        <Marker
-          key={`${marker.lat}-${marker.lng}-${marker.name ?? index}`}
-          position={{ lat: marker.lat, lng: marker.lng }}
-          label={String.fromCharCode(65 + index)}
-          onClick={() => setSelectedMarker(marker)}
+      <MapContainer
+        center={[center.lat, center.lng]}
+        zoom={MAP.defaultZoom}
+        style={{ width: '100%', height: '100%' }}
+        scrollWheelZoom={true}
+      >
+        <MapViewUpdater center={center} zoom={MAP.defaultZoom} />
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
         />
-      ))}
 
-      {selectedMarker && (
-        <InfoWindow
-          position={{ lat: selectedMarker.lat, lng: selectedMarker.lng }}
-          onCloseClick={() => setSelectedMarker(null)}
-        >
-          <div className="info-window">
-            <h2>{selectedMarker.name}</h2>
-            <p>Rating: {selectedMarker.rating ?? 'No rating available'}</p>
-            <p>Address: {selectedMarker.address ?? 'No address available'}</p>
-          </div>
-        </InfoWindow>
-      )}
+        {markers.map((marker, index) => {
+          const label = String.fromCharCode(65 + index);
+          return (
+            <Marker
+              key={`${marker.lat}-${marker.lng}-${marker.name ?? index}`}
+              position={[marker.lat, marker.lng]}
+              icon={createCustomIcon(label)}
+              eventHandlers={{
+                click: () => setSelectedMarker(marker),
+              }}
+            >
+              <Popup>
+                <div className="info-window">
+                  <h2>{marker.name}</h2>
+                  {marker.rating && <p>Rating: {marker.rating}</p>}
+                  <p>Address: {marker.address || 'No address available'}</p>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
 
-      {directions && (
-        <DirectionsRenderer directions={directions} options={{ suppressMarkers: true }} />
+        {routeGeometry && (
+          <Polyline
+            positions={routeGeometry}
+            pathOptions={{
+              color: '#ea580c',
+              weight: 5,
+              opacity: 0.8,
+            }}
+          />
+        )}
+      </MapContainer>
+      {isLoading && (
+        <div className="map-loading">
+          <div className="map-loading__spinner">Loading pubs...</div>
+        </div>
       )}
-      </GoogleMap>
     </div>
   );
 };
