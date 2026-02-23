@@ -27,13 +27,13 @@ The Pub Crawl Planner is designed to solve the common problem of organizing grou
 - Google Maps API key with Places and Directions APIs enabled
 
 ### Installation
-1. Clone the repository
-2. Install dependencies: `npm install`
-3. Create a `.env` file with your Google Maps API key:
+1. Clone the repository and run `npm install`.
+2. Copy `.env.example` to `.env` and add your [Google Maps API key](https://console.cloud.google.com/):
+   ```bash
+   cp .env.example .env
    ```
-   REACT_APP_GOOGLE_MAPS_API_KEY=your_api_key_here
-   ```
-4. Start the development server: `npm start`
+   Then set `REACT_APP_GOOGLE_MAPS_API_KEY` in `.env`. Enable **Maps JavaScript API**, **Places API**, and **Directions API** for the key. The "For development purposes only" watermark is shown until billing is enabled on your Google Cloud project.
+3. Start the app: `npm start`
 
 ## Tech Stack
 

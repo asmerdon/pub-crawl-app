@@ -1,26 +1,26 @@
 import React, { useState } from 'react';
 import { useLoadScript } from '@react-google-maps/api';
 import PubCrawlMap from './Map';
+import { MAP } from './config/mapConstants';
 import './style.css';
 
-const libraries = ['places'];
+const GOOGLE_MAPS_LIBRARIES = ['places'];
 
 const App = () => {
-  const { isLoaded } = useLoadScript({
-    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
-    libraries,
+  const apiKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: apiKey || '',
+    libraries: GOOGLE_MAPS_LIBRARIES,
   });
 
   const [location, setLocation] = useState('');
   const [coordinates, setCoordinates] = useState(null);
   const [maxPubs, setMaxPubs] = useState(5);
-  const [generateRoute, setGenerateRoute] = useState(false);
+  const [generateRoute, setGenerateRoute] = useState(null);
   const [showPubs, setShowPubs] = useState(false);
   const [mode, setMode] = useState('single');
   const [startLocation, setStartLocation] = useState('');
   const [endLocation, setEndLocation] = useState('');
-
-  const defaultCenter = { lat: 51.5074, lng: -0.1278 };
 
   const handleGenerateCrawl = () => {
     if (!window.google) {
@@ -42,40 +42,81 @@ const App = () => {
         }
       });
     } else if (mode === 'double') {
-      const locations = [startLocation, endLocation];
       Promise.all(
-        locations.map((loc) =>
-          new Promise((resolve, reject) => {
-            geocoder.geocode({ address: loc }, (results, status) => {
-              if (status === 'OK') {
-                resolve({
-                  lat: results[0].geometry.location.lat(),
-                  lng: results[0].geometry.location.lng(),
-                });
-              } else {
-                reject(`Geocoding failed for ${loc}: ${status}`);
-              }
-            });
-          })
+        [startLocation, endLocation].map(
+          (address) =>
+            new Promise((resolve, reject) => {
+              geocoder.geocode({ address }, (results, status) => {
+                if (status === 'OK') {
+                  resolve({
+                    lat: results[0].geometry.location.lat(),
+                    lng: results[0].geometry.location.lng(),
+                  });
+                } else {
+                  reject(new Error(`Geocoding failed for "${address}": ${status}`));
+                }
+              });
+            })
         )
       )
         .then(([startCoords, endCoords]) => {
           setCoordinates({ start: startCoords, end: endCoords });
           setGenerateRoute({
             mode: 'double',
-            data: {
-              start: startCoords,
-              end: endCoords,
-              evenlyDistribute: true,
-            },
+            data: { start: startCoords, end: endCoords, evenlyDistribute: true },
           });
           setShowPubs(true);
         })
-        .catch((error) => console.error(error));
+        .catch((err) => console.error(err));
     }
   };
 
-  if (!isLoaded) return <div>Loading...</div>;
+  if (!apiKey) {
+    return (
+      <div className="app-container">
+        <header className="header">
+          <h1>Pub Crawl Route Map</h1>
+        </header>
+        <div className="map-container map-container--message">
+          <p className="api-key-message">
+            Add your Google Maps API key to run the app. Copy <code>.env.example</code> to{' '}
+            <code>.env</code> and set <code>REACT_APP_GOOGLE_MAPS_API_KEY</code>. Enable Maps
+            JavaScript API, Places API, and Directions API (and billing if you want to remove the
+            development watermark).
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="app-container">
+        <header className="header">
+          <h1>Pub Crawl Route Map</h1>
+        </header>
+        <div className="map-container map-container--message">
+          <p className="api-key-message">Failed to load Google Maps. Check your API key and console.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isLoaded) {
+    return (
+      <div className="app-container">
+        <header className="header">
+          <h1>Pub Crawl Route Map</h1>
+        </header>
+        <div className="map-container map-container--message">
+          <p className="api-key-message">Loading map…</p>
+        </div>
+      </div>
+    );
+  }
+
+  const mapCenter =
+    coordinates?.start ?? (coordinates && 'lat' in coordinates ? coordinates : null) ?? MAP.defaultCenter;
 
   return (
     <div className="app-container">
@@ -84,19 +125,21 @@ const App = () => {
       </header>
       <div className="map-container">
         <div className="form-overlay">
-          <div>
-            <label>
+          <div className="form-overlay__row">
+            <label className="form-overlay__label">
               <input
                 type="radio"
+                name="mode"
                 value="single"
                 checked={mode === 'single'}
                 onChange={() => setMode('single')}
               />
               Single Location
             </label>
-            <label>
+            <label className="form-overlay__label">
               <input
                 type="radio"
+                name="mode"
                 value="double"
                 checked={mode === 'double'}
                 onChange={() => setMode('double')}
@@ -105,51 +148,57 @@ const App = () => {
             </label>
           </div>
 
-          <div>
+          <div className="form-overlay__row">
             {mode === 'single' ? (
               <input
                 type="text"
                 placeholder="Enter a location (e.g., Holborn)"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
+                aria-label="Location"
               />
             ) : (
               <>
                 <input
                   type="text"
-                  placeholder="Enter Start Location"
+                  placeholder="Enter start location"
                   value={startLocation}
                   onChange={(e) => setStartLocation(e.target.value)}
+                  aria-label="Start location"
                 />
                 <input
                   type="text"
-                  placeholder="Enter End Location"
+                  placeholder="Enter end location"
                   value={endLocation}
                   onChange={(e) => setEndLocation(e.target.value)}
+                  aria-label="End location"
                 />
               </>
             )}
           </div>
 
-          <div>
-            <label>Max Pubs to Display: </label>
+          <div className="form-overlay__row">
+            <label htmlFor="max-pubs">Max pubs to display</label>
             <input
+              id="max-pubs"
               type="number"
-              min="1"
+              min={1}
+              max={20}
               value={maxPubs}
               onChange={(e) => setMaxPubs(Number(e.target.value))}
             />
           </div>
-          <button onClick={handleGenerateCrawl}>Generate Crawl</button>
+          <button type="button" className="form-overlay__button" onClick={handleGenerateCrawl}>
+            Generate Crawl
+          </button>
         </div>
 
         <PubCrawlMap
-          center={coordinates?.start || coordinates || defaultCenter}
+          center={mapCenter}
           maxPubs={maxPubs}
           generateRoute={generateRoute}
           showPubs={showPubs}
         />
-
       </div>
     </div>
   );

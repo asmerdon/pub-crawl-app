@@ -1,108 +1,241 @@
-/* Full-screen container */
-body, html {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    font-family: Arial, sans-serif;
-  }
-  
-  /* Main app container */
-  .app-container {
-    height: 100%;
-    width: 100%;
-    position: relative;
-  }
-  
-  /* Header styling */
-  .header {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 10px 20px;
-    z-index: 2;
-    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
-  }
-  
-  .header h1 {
-    margin: 0;
-    font-size: 24px;
-  }
-  
-  /* Map container to make the map full screen */
-  .map-container {
-    height: 100%;
-    width: 100%;
-  }
-  
-  /* Form overlay */
-  .form-overlay {
-    position: absolute;
-    top: 80px; /* Place it below the header */
-    left: 20px;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
-    z-index: 2;
-    width: 300px;
-  }
-  
-  .form-overlay input[type="text"],
-  .form-overlay input[type="number"] {
-    width: calc(100% - 20px);
-    margin-bottom: 10px;
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-  }
-  
-  .form-overlay button {
-    display: block;
-    width: 100%;
-    padding: 10px;
-    background-color: #007bff;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-  }
-  
-  .form-overlay button:hover {
-    background-color: #0056b3;
-  }
-  
-  /* Map styling */
-.google-map {
-    width: 100vw; /* Full screen width */
-    height: 100vh; /* Full screen height */
+/* -----------------------------------------------------------------------------
+   Pub Crawl Route Map – layout & modern UI
+   ----------------------------------------------------------------------------- */
+
+:root {
+  --color-bg: #0f172a;
+  --color-bg-card: rgba(255, 255, 255, 0.97);
+  --color-text: #1e293b;
+  --color-text-muted: #64748b;
+  --color-accent: #ea580c;
+  --color-accent-hover: #c2410c;
+  --color-border: #e2e8f0;
+  --color-focus: #ea580c;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-focus: 0 0 0 3px rgba(234, 88, 12, 0.35);
 }
 
-.map-overlay {
-    position: absolute;
-    top: 10px; /* Keep some space from the top */
-    left: 10px;
-    background: white; /* Solid background */
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-    z-index: 1000; /* Ensure overlay is above the map */
+/* Full-height layout */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
+.app-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  min-height: 0;
+}
+
+/* Header */
 .header {
-    position: absolute;
-    top: 0;
-    width: 100%;
-    background: #ffffff; /* Solid background for the header */
-    padding: 10px 20px;
-    font-size: 20px;
-    font-weight: bold;
-    z-index: 1100; /* Ensure header is above everything */
-    border-bottom: 1px solid #ddd;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  height: 56px;
+  background: var(--color-bg);
+  color: #fff;
+  font-weight: 600;
+  font-size: 1.125rem;
+  letter-spacing: -0.02em;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-  
+.header h1 {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+/* Map area: takes all remaining space */
+.map-container {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  background: #e2e8f0;
+}
+
+.map-wrapper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.map-wrapper .google-map {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Form overlay – modern card */
+.form-overlay {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+  width: 320px;
+  padding: 24px;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--color-border);
+  backdrop-filter: blur(12px);
+}
+
+.form-overlay__row {
+  margin-bottom: 18px;
+}
+
+.form-overlay__row:last-of-type {
+  margin-bottom: 0;
+}
+
+.form-overlay__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 20px;
+  cursor: pointer;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.form-overlay__label input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+.form-overlay label[for="max-pubs"] {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.form-overlay input[type="text"],
+.form-overlay input[type="number"] {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 10px 0;
+  padding: 12px 14px;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  color: var(--color-text);
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.form-overlay input[type="text"]:last-of-type,
+.form-overlay input[type="number"] {
+  margin-bottom: 0;
+}
+
+.form-overlay input[type="text"]::placeholder {
+  color: var(--color-text-muted);
+}
+
+.form-overlay input[type="text"]:focus,
+.form-overlay input[type="number"]:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-focus);
+}
+
+.form-overlay #max-pubs {
+  width: 80px;
+  margin-left: 0;
+  margin-top: 4px;
+}
+
+.form-overlay__button,
+.form-overlay button {
+  display: block;
+  width: 100%;
+  margin-top: 20px;
+  padding: 14px 20px;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: #fff;
+  background: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.form-overlay__button:hover,
+.form-overlay button:hover {
+  background: var(--color-accent-hover);
+}
+
+.form-overlay__button:active,
+.form-overlay button:active {
+  transform: scale(0.99);
+}
+
+/* Message states (no API key, loading, error) */
+.map-container--message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%);
+}
+
+.api-key-message {
+  max-width: 520px;
+  margin: 0;
+  padding: 28px 32px;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--color-border);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+.api-key-message code {
+  padding: 3px 8px;
+  background: #f1f5f9;
+  border-radius: var(--radius-sm);
+  font-size: 0.875em;
+  color: var(--color-text);
+}
+
+/* Info window (marker popup) */
+.info-window {
+  padding: 2px 0;
+  min-width: 180px;
+}
+
+.info-window h2 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.info-window p {
+  margin: 4px 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
